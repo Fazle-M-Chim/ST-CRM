@@ -3,6 +3,6 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  base: '/ST-CRM/', // 👈 critical for GitHub Pages
+  base: '/Sakan-Tradelinks/',
   plugins: [react(), tailwindcss()],
 })
