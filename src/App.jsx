@@ -78,33 +78,76 @@ const Sidebar = ({ activePage, setActivePage, isSidebarOpen, setIsSidebarOpen })
   );
 };
 
-// --- Dashboard Page Components ---
+// --- (REWRITTEN) Dashboard Page Component ---
 const DashboardPage = ({ setActivePage }) => {
-    const getDate = (days) => {
-        const date = new Date();
-        date.setDate(date.getDate() + days);
-        return date;
-    };
+    // --- State Management ---
+    // The client count is now dynamic. The others are ready to be made dynamic.
+    const [clientCount, setClientCount] = useState(0);
+    const [activeMachineCount, setActiveMachineCount] = useState(4); // Placeholder
+    const [overdueFollowUpsCount, setOverdueFollowUpsCount] = useState(3); // Placeholder
+
+    // State for the lists, initialized with sample data
+    const [overdueItems, setOverdueItems] = useState([
+        { client: 'TechCorp Solutions', task: 'AMC Renewal', dueDate: new Date('2024-12-15') },
+        { client: 'Global Manufacturing', task: 'Warranty Expiry', dueDate: new Date('2025-02-20') },
+        { client: 'Precision Industries', task: 'Service Follow-up', dueDate: new Date('2025-04-10') },
+    ]);
+    const [upcomingReminders, setUpcomingReminders] = useState([
+        { client: 'InnoTech Labs', task: 'Monthly Check-in', dueDate: new Date('2025-08-15') },
+        { client: 'Apex Engineering', task: 'Insurance Renewal', dueDate: new Date('2025-09-20') },
+    ]);
+
+    // --- Data Fetching ---
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            try {
+                // Fetch clients to get the total count
+                const clientsResponse = await fetch('http://localhost:3001/api/clients');
+                if (!clientsResponse.ok) throw new Error('Failed to fetch clients');
+                const clients = await clientsResponse.json();
+                setClientCount(clients.length);
+
+                // TODO: Fetch machine data when the API is ready
+                // const machineResponse = await fetch('http://localhost:3001/api/machines');
+                // const machines = await machineResponse.json();
+                // setActiveMachineCount(machines.filter(m => m.status === 'Active').length);
+
+                // TODO: Fetch reminders data when the API is ready
+                // const remindersResponse = await fetch('http://localhost:3001/api/reminders');
+                // const reminders = await remindersResponse.json();
+                // setOverdueFollowUpsCount(reminders.filter(r => new Date(r.dueDate) < new Date()).length);
+                // setOverdueItems(reminders.filter(r => new Date(r.dueDate) < new Date()));
+                // setUpcomingReminders(reminders.filter(r => new Date(r.dueDate) > new Date()));
+
+            } catch (error) {
+                console.error("Failed to fetch dashboard data:", error);
+            }
+        };
+
+        fetchDashboardData();
+    }, []); // The empty array ensures this runs only once when the component loads
+
+    // --- Sub-Components ---
+    // These are now defined inside DashboardPage for simplicity
 
     const Header = () => (
         <header className="flex justify-between items-center w-full mb-8">
             <div>
                 <h2 className="text-3xl font-bold text-gray-800">Dashboard</h2>
-                <p className="text-gray-500">Welcome back! Here's what needs your attention.</p>
+                <p className="text-gray-500">A summary of your business activity.</p>
             </div>
-            <div className="flex items-center space-x-4">
-                <button className="bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center font-semibold hover:bg-blue-800 transition">
-                    <Icon name="plus" className="w-5 h-5 mr-2" />
-                    Add Client
-                </button>
-            </div>
+            <button onClick={() => setActivePage('Clients')} className="bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center font-semibold hover:bg-blue-800 transition">
+                <Icon name="plus" className="w-5 h-5 mr-2" />
+                Add Client
+            </button>
         </header>
     );
 
     const StatCard = ({ title, value, icon, iconBgColor, targetPage }) => (
-        <button 
-            onClick={() => setActivePage(targetPage)}
+        <button
+            onClick={() => targetPage && setActivePage(targetPage)}
             className="bg-white p-6 rounded-lg shadow-sm flex justify-between items-center w-full text-left transition duration-300 hover:shadow-lg hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            disabled={!targetPage}
         >
             <div>
                 <p className="text-gray-500">{title}</p>
@@ -117,25 +160,15 @@ const DashboardPage = ({ setActivePage }) => {
     );
 
     const OverdueFollowUpsCard = () => {
-        const overdueItems = [
-            { client: 'TechCorp Solutions', task: 'AMC Renewal', dueDate: getDate(-210) },
-            { client: 'Global Manufacturing', task: 'Warranty Expiry', dueDate: getDate(-150) },
-            { client: 'Precision Industries', task: 'Service Follow-up', dueDate: getDate(-95) },
-        ];
         const getDaysOverdue = (dueDate) => Math.floor((new Date() - new Date(dueDate)) / (1000 * 60 * 60 * 24));
-        const formatDate = (date) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(date));
+        const formatDate = (date) => new Intl.DateTimeFormat('en-IN').format(new Date(date));
         return (
             <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-800 flex items-center mb-4">
-                    <span className="text-red-500 mr-2"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
-                    Overdue Follow-ups
-                </h3>
-                <p className="text-gray-500 mb-6">Clients requiring immediate attention</p>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Overdue Follow-ups</h3>
                 <ul className="space-y-4">
                     {overdueItems.map((item, index) => (
-                        <li key={index} className="flex items-start">
-                            <span className="h-2.5 w-2.5 bg-red-500 rounded-full mt-1.5 mr-4"></span>
-                            <div className="flex-grow">
+                        <li key={index} className="flex items-center justify-between">
+                            <div>
                                 <p className="font-semibold text-gray-800">{item.client}</p>
                                 <p className="text-sm text-gray-500">{item.task}</p>
                             </div>
@@ -151,25 +184,15 @@ const DashboardPage = ({ setActivePage }) => {
     };
 
     const UpcomingRemindersCard = () => {
-        const reminderItems = [
-            { client: 'InnoTech Labs', task: 'Monthly Check-in', dueDate: getDate(30) },
-            { client: 'Apex Engineering', task: 'Insurance Renewal', dueDate: getDate(60) },
-            { client: 'Dynamic Systems', task: 'Service Maintenance', dueDate: getDate(90) },
-        ];
         const getDaysUpcoming = (dueDate) => Math.ceil((new Date(dueDate) - new Date()) / (1000 * 60 * 60 * 24));
-        const formatDate = (date) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(date));
+        const formatDate = (date) => new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(date));
         return (
             <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-800 flex items-center mb-4">
-                    <span className="text-blue-500 mr-2"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg></span>
-                    Upcoming Monthly Reminders
-                </h3>
-                <p className="text-gray-500 mb-6">Scheduled activities for this month</p>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Upcoming Reminders</h3>
                 <ul className="space-y-4">
-                    {reminderItems.map((item, index) => (
-                        <li key={index} className="flex items-start">
-                            <span className="h-2.5 w-2.5 bg-blue-500 rounded-full mt-1.5 mr-4"></span>
-                            <div className="flex-grow">
+                    {upcomingReminders.map((item, index) => (
+                        <li key={index} className="flex items-center justify-between">
+                             <div>
                                 <p className="font-semibold text-gray-800">{item.client}</p>
                                 <p className="text-sm text-gray-500">{item.task}</p>
                             </div>
@@ -184,13 +207,14 @@ const DashboardPage = ({ setActivePage }) => {
         );
     };
 
+    // --- Main Component Render ---
     return (
         <>
             <Header />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                <StatCard title="Total Clients" value="6" icon="statClients" iconBgColor="bg-blue-500" targetPage="Clients" />
-                <StatCard title="Active Machines" value="4" icon="statMachines" iconBgColor="bg-green-500" targetPage="Machines" />
-                <StatCard title="Overdue Follow-ups" value="3" icon="statOverdue" iconBgColor="bg-red-500" targetPage="Reminders" />
+                <StatCard title="Total Clients" value={clientCount} icon="statClients" iconBgColor="bg-blue-500" targetPage="Clients" />
+                <StatCard title="Active Machines" value={activeMachineCount} icon="statMachines" iconBgColor="bg-green-500" targetPage="Machines" />
+                <StatCard title="Overdue Follow-ups" value={overdueFollowUpsCount} icon="statOverdue" iconBgColor="bg-red-500" targetPage="Reminders" />
             </div>
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 <OverdueFollowUpsCard />
@@ -269,27 +293,42 @@ const RemindersPage = () => {
 };
 
 
-// --- NEW: Add Client Modal Component ---
-const AddClientModal = ({ isOpen, onClose, onClientAdded }) => {
-    const initialState = {
-        companyName: '',
-        companyEmail: '',
-        physicalAddress: '',
-        lastContactedDate: '',
-        contacts: [{ name: '', title: '', phone: '', email: '' }]
-    };
+// App.jsx
 
-    const [formData, setFormData] = useState(initialState);
+// ... (Your Icon component) ...
+
+// --- (FIXED & UPGRADED) Add/Edit Client Modal Component ---
+const AddClientModal = ({ isOpen, onClose, onClientAdded, clientToEdit }) => {
+    const getInitialState = () => ({
+        companyName: clientToEdit?.name || '',
+        companyEmail: clientToEdit?.companyEmail || '',
+        physicalAddress: clientToEdit?.physicalAddress || '',
+        lastContactedDate: clientToEdit?.lastContactedDate ? new Date(clientToEdit.lastContactedDate).toISOString().split('T')[0] : '',
+        contacts: clientToEdit?.contacts?.map(c => ({...c})) || [{ name: '', title: '', phone: '', email: '' }]
+    });
+
+    const [formData, setFormData] = useState(getInitialState());
+
+    useEffect(() => {
+        if (isOpen) {
+            setFormData(getInitialState());
+        }
+    }, [clientToEdit, isOpen]);
 
     const handleMainChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
-
+    
+    // FIXED: This now correctly updates the nested contact state immutably.
     const handleContactChange = (index, e) => {
         const { name, value } = e.target;
-        const updatedContacts = [...formData.contacts];
-        updatedContacts[index][name] = value;
+        const updatedContacts = formData.contacts.map((contact, i) => {
+            if (i === index) {
+                return { ...contact, [name]: value }; // Create a new object for the item being changed
+            }
+            return contact;
+        });
         setFormData(prev => ({ ...prev, contacts: updatedContacts }));
     };
 
@@ -307,43 +346,44 @@ const AddClientModal = ({ isOpen, onClose, onClientAdded }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const isEditing = !!clientToEdit;
+        const url = isEditing ? `http://localhost:3001/api/clients/${clientToEdit._id}` : 'http://localhost:3001/api/clients';
+        const method = isEditing ? 'PUT' : 'POST';
+
         try {
-            const response = await fetch('http://localhost:3001/api/clients', {
-                method: 'POST',
+            const response = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
             });
 
             if (!response.ok) {
-                throw new Error('Failed to create client');
+                const errorData = await response.json();
+                throw new Error(errorData.message || `Failed to ${isEditing ? 'update' : 'create'} client`);
             }
             
-            setFormData(initialState); // Reset form
-            onClientAdded(); // Refresh the client list
-            onClose(); // Close the modal
+            onClientAdded();
+            onClose();
         } catch (error) {
             console.error('Error submitting form:', error);
+            alert(`Error: ${error.message}`);
         }
     };
     
-    // Don't render anything if the modal isn't open
     if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
             <div className="bg-white p-8 rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                <h2 className="text-2xl font-bold mb-6">Add New Client</h2>
-                
+                <h2 className="text-2xl font-bold mb-6">{clientToEdit ? 'Edit Client' : 'Add New Client'}</h2>
                 <form onSubmit={handleSubmit}>
-                    {/* Company Details */}
+                    {/* ... (The form JSX is identical) ... */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <input type="text" name="companyName" value={formData.companyName} onChange={handleMainChange} placeholder="Company Name" className="p-2 border rounded" required />
                         <input type="email" name="companyEmail" value={formData.companyEmail} onChange={handleMainChange} placeholder="Company Email" className="p-2 border rounded" />
                         <input type="text" name="physicalAddress" value={formData.physicalAddress} onChange={handleMainChange} placeholder="Physical Address" className="p-2 border rounded" />
                         <input type="date" name="lastContactedDate" value={formData.lastContactedDate} onChange={handleMainChange} className="p-2 border rounded" required />
                     </div>
-
-                    {/* Contact Persons */}
                     <h3 className="text-xl font-semibold mb-4 border-t pt-4">Contact Persons</h3>
                     {formData.contacts.map((contact, index) => (
                         <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4 p-3 border rounded-md relative">
@@ -357,8 +397,6 @@ const AddClientModal = ({ isOpen, onClose, onClientAdded }) => {
                         </div>
                     ))}
                     <button type="button" onClick={addContact} className="mb-6 text-sm text-blue-600 hover:underline">+ Add another contact</button>
-
-                    {/* Actions */}
                     <div className="flex justify-end gap-4 border-t pt-6">
                         <button type="button" onClick={onClose} className="px-6 py-2 bg-gray-200 rounded-md font-semibold">Cancel</button>
                         <button type="submit" className="px-6 py-2 bg-blue-700 text-white rounded-md font-semibold hover:bg-blue-800">Save Client</button>
@@ -369,36 +407,132 @@ const AddClientModal = ({ isOpen, onClose, onClientAdded }) => {
     );
 };
 
-// --- (MODIFIED) Clients Page Component ---
+// --- (UPGRADED) Client Detail View Component ---
+const ClientDetailView = ({ client, onEdit, onBack, onDelete }) => {
+    return (
+        <div className="bg-white p-8 rounded-lg shadow-sm">
+            <div className="flex justify-between items-start mb-6">
+                <div>
+                    <h2 className="text-3xl font-bold text-gray-800">{client.name}</h2>
+                    <p className="text-gray-500">{client.physicalAddress}</p>
+                    <p className="text-gray-500">{client.companyEmail}</p>
+                </div>
+                <div className="text-right">
+                    <button onClick={onBack} className="text-sm text-blue-600 hover:underline mb-2">← Back to Client List</button>
+                    <p className="text-sm text-gray-600">
+                        <strong>Last Contacted:</strong> {new Date(client.lastContactedDate).toLocaleDateString()}
+                    </p>
+                </div>
+            </div>
+
+            <div className="border-t pt-6">
+                <h3 className="text-xl font-semibold mb-4 text-gray-700">Contacts</h3>
+                <div className="space-y-4">
+                    {client.contacts.map((contact, index) => (
+                        <div key={index} className="p-4 border rounded-md bg-gray-50">
+                            <p className="font-bold">{contact.name} <span className="font-normal text-gray-600">- {contact.title}</span></p>
+                            <p className="text-sm text-gray-600">Email: {contact.email}</p>
+                            <p className="text-sm text-gray-600">Phone: {contact.phone}</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <div className="flex justify-end items-center mt-8 border-t pt-6 gap-4">
+                {/* NEW: Delete button */}
+                <button onClick={() => onDelete(client._id)} className="bg-red-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-red-700 transition">
+                    Delete Client
+                </button>
+                <button onClick={() => onEdit(client)} className="bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-800 transition">
+                    Edit Client Details
+                </button>
+            </div>
+        </div>
+    );
+};
+
+
+// --- (UPGRADED) Clients Page Component ---
 const ClientsPage = () => {
     const [clients, setClients] = useState([]);
-    // NEW: State to control the modal's visibility
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedClient, setSelectedClient] = useState(null);
+    const [clientToEdit, setClientToEdit] = useState(null);
 
     const fetchClients = async () => {
         try {
             const response = await fetch('http://localhost:3001/api/clients');
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
+            if (!response.ok) throw new Error('Network response was not ok');
             const data = await response.json();
             setClients(data);
+
+            if(selectedClient){
+                const updatedSelectedClient = data.find(c => c._id === selectedClient._id);
+                setSelectedClient(updatedSelectedClient || null); // If client was deleted, go back to list
+            }
         } catch (error) {
             console.error('There was a problem fetching the clients:', error);
         }
     };
     
     useEffect(() => {
-        fetchClients(); // Fetch clients when the component loads
+        fetchClients();
     }, []);
+    
+    // NEW: Function to handle deleting a client
+    const handleDeleteClient = async (clientId) => {
+        if (window.confirm('Are you sure you want to permanently delete this client?')) {
+            try {
+                const response = await fetch(`http://localhost:3001/api/clients/${clientId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete client');
+                }
+                
+                // Return to the list view after deleting
+                setSelectedClient(null); 
+                // Refresh the client list to remove the deleted client
+                fetchClients();
+            } catch (error) {
+                console.error('Error deleting client:', error);
+                alert(`Error: ${error.message}`);
+            }
+        }
+    };
+
+    const handleAddClient = () => {
+        setClientToEdit(null);
+        setIsModalOpen(true);
+    };
+
+    const handleEditClient = (client) => {
+        setClientToEdit(client);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setClientToEdit(null);
+    }
+    
+    if (selectedClient) {
+        return <ClientDetailView 
+                    client={selectedClient} 
+                    onEdit={handleEditClient}
+                    onBack={() => setSelectedClient(null)} 
+                    onDelete={handleDeleteClient}
+                />;
+    }
 
     return (
         <div className="w-full">
-            {/* The modal component is now here */}
             <AddClientModal 
                 isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                onClientAdded={fetchClients} // Pass fetchClients to refresh the list
+                onClose={handleCloseModal}
+                onClientAdded={fetchClients}
+                clientToEdit={clientToEdit}
             />
             
             <header className="flex justify-between items-center w-full mb-8">
@@ -406,8 +540,7 @@ const ClientsPage = () => {
                     <h2 className="text-3xl font-bold text-gray-800">Clients</h2>
                     <p className="text-gray-500">Displaying clients from the database.</p>
                 </div>
-                 {/* This button now opens the modal */}
-                 <button onClick={() => setIsModalOpen(true)} className="bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center font-semibold hover:bg-blue-800 transition">
+                 <button onClick={handleAddClient} className="bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center font-semibold hover:bg-blue-800 transition">
                     <Icon name="plus" className="w-5 h-5 mr-2" />
                     Add Client
                 </button>
@@ -417,9 +550,15 @@ const ClientsPage = () => {
                 <ul className="divide-y divide-gray-200">
                     {clients.length > 0 ? (
                         clients.map(client => (
-                            <li key={client._id} className="p-4 flex justify-between items-center hover:bg-gray-50 transition">
+                            <li 
+                                key={client._id} 
+                                className="p-4 flex justify-between items-center hover:bg-gray-50 transition cursor-pointer"
+                                onClick={() => setSelectedClient(client)}
+                            >
                                 <span className="font-semibold text-gray-800">{client.name}</span>
-                                <span className="text-gray-500">{new Date(client.lastContactedDate).toLocaleDateString()}</span>
+                                <span className="text-sm text-gray-500">
+                                    Last Contacted: {new Date(client.lastContactedDate).toLocaleDateString()}
+                                </span>
                             </li>
                         ))
                     ) : (
@@ -430,7 +569,6 @@ const ClientsPage = () => {
         </div>
     );
 };
-
 
 // --- Machines Page Component ---
 const MachinesPage = () => {
