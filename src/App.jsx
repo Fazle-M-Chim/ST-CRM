@@ -292,11 +292,6 @@ const RemindersPage = () => {
     );
 };
 
-
-// App.jsx
-
-// ... (Your Icon component) ...
-
 // --- (FIXED & UPGRADED) Add/Edit Client Modal Component ---
 const AddClientModal = ({ isOpen, onClose, onClientAdded, clientToEdit }) => {
     const getInitialState = () => ({
@@ -407,57 +402,61 @@ const AddClientModal = ({ isOpen, onClose, onClientAdded, clientToEdit }) => {
     );
 };
 
-// --- (FIXED) Client Detail View Component ---
+// --- (SIMPLIFIED) Client Detail View Component ---
 const ClientDetailView = ({ client, onEdit, onBack, onDelete }) => {
+    const [machines, setMachines] = useState([]);
+
+    const fetchMachines = async () => {
+        if (!client?._id) return;
+        try {
+            const response = await fetch(`http://localhost:3001/api/clients/${client._id}/machines`);
+            if (!response.ok) throw new Error('Failed to fetch machines');
+            const data = await response.json();
+            setMachines(data);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    useEffect(() => {
+        fetchMachines();
+    }, [client]);
+
     return (
         <div className="bg-white p-8 rounded-lg shadow-sm">
+            {/* Client details section */}
             <div className="flex justify-between items-start mb-6">
                 <div>
                     <h2 className="text-3xl font-bold text-gray-800">{client.name}</h2>
                     <p className="text-gray-500">{client.physicalAddress}</p>
-                    <p className="text-gray-500">{client.companyEmail}</p>
                 </div>
-                <div className="text-right">
-                    <button onClick={onBack} className="text-sm text-blue-600 hover:underline mb-2">← Back to Client List</button>
-                    {/* Only show the date if it exists */}
-                    {client.lastContactedDate && (
-                        <p className="text-sm text-gray-600">
-                            <strong>Last Contacted:</strong> {new Date(client.lastContactedDate).toLocaleDateString()}
-                        </p>
-                    )}
-                </div>
+                <button onClick={onBack} className="text-sm text-blue-600 hover:underline">← Back to Client List</button>
             </div>
 
-            <div className="border-t pt-6">
-                <h3 className="text-xl font-semibold mb-4 text-gray-700">Contacts</h3>
-                <div className="space-y-4">
-                    {/* FIX: We now check if client.contacts exists and is an array before mapping.
-                      This is called "optional chaining" and "short-circuiting".
-                      If client.contacts is undefined, the code after && will not run, preventing the crash.
-                    */}
-                    {client.contacts && client.contacts.map((contact, index) => (
-                        <div key={index} className="p-4 border rounded-md bg-gray-50">
-                            <p className="font-bold">{contact.name || 'N/A'} <span className="font-normal text-gray-600">- {contact.title || 'N/A'}</span></p>
-                            <p className="text-sm text-gray-600">Email: {contact.email || 'N/A'}</p>
-                            <p className="text-sm text-gray-600">Phone: {contact.phone || 'N/A'}</p>
+            {/* Machines Section - This no longer has an "Add Machine" button */}
+            <div className="border-t pt-6 mt-6">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-semibold text-gray-700">Machines ({machines.length})</h3>
+                </div>
+                <div className="space-y-3">
+                    {machines.length > 0 ? machines.map(machine => (
+                        <div key={machine._id} className="p-3 border rounded-md bg-gray-50">
+                            <p className="font-bold">{machine.modelName} <span className="font-normal text-gray-500">(SN: {machine.serialNumber})</span></p>
+                            <div className="text-xs text-gray-600 mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                                <span>Warranty: {machine.hasWarranty ? 'Active' : 'Inactive'}</span>
+                                <span>AMC: {machine.hasAmc ? `Active (til ${new Date(machine.amcValidity).toLocaleDateString()})` : 'Inactive'}</span>
+                                <span>Insurance: {machine.insuranceValidity ? `Valid (til ${new Date(machine.insuranceValidity).toLocaleDateString()})` : 'N/A'}</span>
+                            </div>
                         </div>
-                    ))}
-                    
-                    {/* Show a message if there are no contacts */}
-                    {(!client.contacts || client.contacts.length === 0) && (
-                         <p className="text-sm text-gray-500">No contact persons have been added for this client.</p>
-                    )}
+                    )) : <p className="text-sm text-gray-500">No machines have been added for this client.</p>}
                 </div>
             </div>
 
+            {/* Contacts and action buttons sections */}
             <div className="flex justify-end items-center mt-8 border-t pt-6 gap-4">
-                <button onClick={() => onDelete(client._id)} className="bg-red-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-red-700 transition">
-                    Delete Client
-                </button>
-                <button onClick={() => onEdit(client)} className="bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-800 transition">
-                    Edit Client Details
-                </button>
-            </div>
+               <button onClick={() => onDelete(client._id)} className="bg-red-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-red-700 transition">Delete Client</button>
+               <button onClick={() => onEdit(client)} className="bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-800 transition">Edit Client Details</button>
+           </div>
         </div>
     );
 };
@@ -581,97 +580,218 @@ const ClientsPage = () => {
     );
 };
 
-// --- Machines Page Component ---
-const MachinesPage = () => {
-    const allMachines = [
-        { id: 1, name: 'CNC Lathe TX-500', client: 'TechCorp Solutions', dueDate: '2025-08-15', status: 'Active' },
-        { id: 2, name: 'Milling Machine V2', client: 'Global Manufacturing', dueDate: '2025-09-01', status: 'Active' },
-        { id: 3, name: 'Industrial Grinder G-8', client: 'Precision Industries', dueDate: '2025-07-20', status: 'AMC Due' },
-        { id: 4, name: '3D Printer ProJet 7000', client: 'InnoTech Labs', dueDate: '2024-12-05', status: 'Warranty Expired' },
-        { id: 5, name: 'Sheet Metal Press MP-3', client: 'Apex Engineering', dueDate: '2025-10-30', status: 'Active' },
-        { id: 6, name: 'Automated Welding Robot', client: 'Dynamic Systems', dueDate: '2025-07-25', status: 'AMC Due' },
-        { id: 7, name: 'Laser Cutter LC-400', client: 'Stellar Solutions', dueDate: '2025-11-22', status: 'Active' },
-        { id: 8, name: 'Packaging Machine PM-XL', client: 'Quantum Innovations', dueDate: '2025-06-10', status: 'Warranty Expired' },
-    ];
+// --- (UPGRADED) Add Machine Modal Component ---
+const AddMachineModal = ({ isOpen, onClose, onMachineAdded, clients }) => {
+    const initialState = {
+        clientId: '',
+        serialNumber: '',
+        modelName: '',
+        purchaseDate: '',
+        hasWarranty: false,
+        hasAmc: false,
+        amcValidity: '',
+        amcLastContactedDate: '',
+        lastContactedDate: '',
+        insuranceValidity: '',
+        insuranceLastContactedDate: ''
+    };
+    const [formData, setFormData] = useState(initialState);
 
-    const [searchTerm, setSearchTerm] = useState('');
-    const [filteredMachines, setFilteredMachines] = useState(allMachines);
-
-    useEffect(() => {
-        const results = allMachines.filter(machine =>
-            machine.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            machine.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            machine.status.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-        setFilteredMachines(results);
-    }, [searchTerm, allMachines]);
-
-    const formatDate = (dateString) => {
-        return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(dateString));
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
     };
 
-    const getStatusClass = (status) => {
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!formData.clientId) {
+            alert('Please select a client.');
+            return;
+        }
+        try {
+            const response = await fetch('http://localhost:3001/api/machines', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            if (!response.ok) throw new Error('Failed to add machine');
+            onMachineAdded();
+            onClose();
+        } catch (error) {
+            console.error('Error adding machine:', error);
+            alert(`Error: ${error.message}`);
+        }
+    };
+
+    useEffect(() => {
+        if (isOpen) {
+            const defaultState = { ...initialState, clientId: clients?.[0]?._id || '' };
+            setFormData(defaultState);
+        }
+    }, [isOpen, clients]);
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
+            <div className="bg-white p-8 rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <h2 className="text-2xl font-bold mb-6">Add New Machine</h2>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Client & Machine Details */}
+                    <div className="space-y-4">
+                         <select name="clientId" value={formData.clientId} onChange={handleChange} className="p-2 border rounded w-full bg-white font-medium" required>
+                            <option value="" disabled>-- Select a Client --</option>
+                            {clients.map(client => (
+                                <option key={client._id} value={client._id}>{client.name}</option>
+                            ))}
+                        </select>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="text" name="serialNumber" placeholder="Serial Number" onChange={handleChange} value={formData.serialNumber} className="p-2 border rounded" required />
+                            <input type="text" name="modelName" placeholder="Model Name" onChange={handleChange} value={formData.modelName} className="p-2 border rounded" required />
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700">Machine Purchase Date</label>
+                            <input type="date" name="purchaseDate" onChange={handleChange} value={formData.purchaseDate} className="p-2 border rounded w-full" required />
+                        </div>
+                    </div>
+                    
+                    {/* Support & Contact Details */}
+                    <div className="space-y-4 pt-4 border-t">
+                        <div className="flex items-center gap-4">
+                            <input id="hasWarranty" type="checkbox" name="hasWarranty" onChange={handleChange} checked={formData.hasWarranty} className="h-5 w-5 rounded text-blue-600 focus:ring-blue-500" />
+                            <label htmlFor="hasWarranty" className="font-medium text-gray-700">Client has active Warranty?</label>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <input id="hasAmc" type="checkbox" name="hasAmc" onChange={handleChange} checked={formData.hasAmc} className="h-5 w-5 rounded text-blue-600 focus:ring-blue-500" />
+                            <label htmlFor="hasAmc" className="font-medium text-gray-700">Client has an AMC?</label>
+                        </div>
+                        {formData.hasAmc && (
+                            <div className="grid grid-cols-2 gap-4 pl-9">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">AMC Validity</label>
+                                    <input type="date" name="amcValidity" onChange={handleChange} value={formData.amcValidity} className="p-2 border rounded w-full" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">AMC Last Contacted</label>
+                                    <input type="date" name="amcLastContactedDate" onChange={handleChange} value={formData.amcLastContactedDate} className="p-2 border rounded w-full" />
+                                </div>
+                            </div>
+                        )}
+                        <div className="border-t pt-4">
+                             <label className="block text-sm font-medium text-gray-700">Insurance Validity (Optional)</label>
+                             <input type="date" name="insuranceValidity" onChange={handleChange} value={formData.insuranceValidity} className="p-2 border rounded w-full mt-1" />
+                        </div>
+                        {formData.insuranceValidity && (
+                             <div className="pl-9">
+                                <label className="block text-sm font-medium text-gray-700">Insurance Last Contacted</label>
+                                <input type="date" name="insuranceLastContactedDate" onChange={handleChange} value={formData.insuranceLastContactedDate} className="p-2 border rounded w-full mt-1" />
+                            </div>
+                        )}
+                         <div className="border-t pt-4">
+                            <label className="block text-sm font-medium text-gray-700">Last Contacted for this Machine (General)</label>
+                            <input type="date" name="lastContactedDate" onChange={handleChange} value={formData.lastContactedDate} className="p-2 border rounded w-full mt-1" required />
+                        </div>
+                    </div>
+                    
+                    <div className="flex justify-end gap-4 border-t pt-6">
+                        <button type="button" onClick={onClose} className="px-6 py-2 bg-gray-200 rounded-md font-semibold">Cancel</button>
+                        <button type="submit" className="px-6 py-2 bg-blue-700 text-white rounded-md font-semibold hover:bg-blue-800">Save Machine</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+// --- (UPGRADED) Main Machines Page Component ---
+const MachinesPage = () => {
+    const [machines, setMachines] = useState([]);
+    const [clients, setClients] = useState([]);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    // NEW: Loading state to prevent opening modal before clients are loaded
+    const [isLoading, setIsLoading] = useState(true);
+
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const machinesRes = await fetch('http://localhost:3001/api/machines');
+            if (!machinesRes.ok) throw new Error('Failed to fetch machines');
+            const machinesData = await machinesRes.json();
+            setMachines(machinesData);
+
+            const clientsRes = await fetch('http://localhost:3001/api/clients');
+            if (!clientsRes.ok) throw new Error('Failed to fetch clients');
+            const clientsData = await clientsRes.json();
+            setClients(clientsData);
+
+        } catch (error) {
+            console.error("Failed to fetch data:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const getStatusBadge = (status) => {
+        const baseClasses = "px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full";
         switch (status) {
-            case 'Active': return 'bg-green-100 text-green-800';
-            case 'AMC Due': return 'bg-yellow-100 text-yellow-800';
-            case 'Warranty Expired': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case "AMC": return `${baseClasses} bg-green-100 text-green-800`;
+            case "Insurance": return `${baseClasses} bg-blue-100 text-blue-800`;
+            default: return `${baseClasses} bg-gray-100 text-gray-800`;
         }
     };
 
     return (
         <div className="w-full">
+            <AddMachineModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onMachineAdded={fetchData}
+                clients={clients}
+            />
+
             <header className="flex justify-between items-center w-full mb-8">
                 <div>
-                    <h2 className="text-3xl font-bold text-gray-800">Machines</h2>
-                    <p className="text-gray-500">Track and manage all client machines.</p>
+                    <h2 className="text-3xl font-bold text-gray-800">All Machines</h2>
+                    <p className="text-gray-500">A complete inventory of all machines across clients.</p>
                 </div>
-                 <button className="bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center font-semibold hover:bg-blue-800 transition">
+                {/* FIXED: Button is disabled while data is loading */}
+                <button 
+                    onClick={() => setIsModalOpen(true)} 
+                    className="bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center font-semibold hover:bg-blue-800 transition disabled:bg-gray-400"
+                    disabled={isLoading}
+                >
                     <Icon name="plus" className="w-5 h-5 mr-2" />
-                    Add Machine
+                    {isLoading ? 'Loading Clients...' : 'Add Machine'}
                 </button>
             </header>
-
-            <div className="mb-8">
-                <div className="relative">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                        <Icon name="search" className="w-5 h-5 text-gray-400" />
-                    </span>
-                    <input
-                        type="text"
-                        placeholder="Search by machine, client, or status..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                </div>
-            </div>
 
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Machine Name</th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AMC/Warranty Due Date</th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model Name</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial Number</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                            {/* NEW: Status column */}
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Support Status</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredMachines.length > 0 ? (
-                            filteredMachines.map(machine => (
-                                <tr key={machine.id} className="hover:bg-gray-50 transition">
+                        {machines.length > 0 ? (
+                            machines.map(machine => (
+                                <tr key={machine._id}>
+                                    <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{machine.modelName}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">{machine.serialNumber}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">{machine.clientName}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="font-medium text-gray-900">{machine.name}</span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="text-gray-600">{machine.client}</span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="text-gray-600">{formatDate(machine.dueDate)}</span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(machine.status)}`}>
+                                        <span className={getStatusBadge(machine.status)}>
                                             {machine.status}
                                         </span>
                                     </td>
@@ -679,7 +799,9 @@ const MachinesPage = () => {
                             ))
                         ) : (
                             <tr>
-                                <td colSpan="4" className="px-6 py-12 text-center text-gray-500">No machines found.</td>
+                                <td colSpan="4" className="text-center py-10 text-gray-500">
+                                    {isLoading ? 'Loading machines...' : 'No machines found.'}
+                                </td>
                             </tr>
                         )}
                     </tbody>
