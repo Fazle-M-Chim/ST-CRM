@@ -24,7 +24,6 @@ const Icon = ({ name, className }) => {
     statClients: (
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
     ),
-    // Updated icon for machines to a Wrench
     statMachines: (
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
     ),
@@ -41,8 +40,8 @@ const Icon = ({ name, className }) => {
   return icons[name] || null;
 };
 
-// Sidebar Component
-const Sidebar = ({ activePage, setActivePage }) => {
+// --- Sidebar Component ---
+const Sidebar = ({ activePage, setActivePage, isSidebarOpen, setIsSidebarOpen }) => {
   const menuItems = [
     { name: 'Dashboard', icon: 'dashboard' },
     { name: 'Clients', icon: 'clients' },
@@ -51,18 +50,25 @@ const Sidebar = ({ activePage, setActivePage }) => {
   ];
 
   return (
-    <aside className="w-64 bg-white text-gray-800 p-4 flex flex-col flex-shrink-0">
-      <div className="flex items-center mb-8 flex-shrink-0">
-        <Icon name="logo" className="w-8 h-8 text-blue-600" />
-        <h1 className="text-xl font-bold ml-2">Sakan Tradelinks</h1>
-      </div>
+    <aside className={`bg-white text-gray-800 p-4 flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
+      <button 
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+        className="flex items-center mb-8 flex-shrink-0 w-full hover:bg-gray-100 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        <Icon name="logo" className="w-8 h-8 text-blue-600 flex-shrink-0" />
+        {isSidebarOpen && <h1 className="text-xl font-bold ml-2 whitespace-nowrap">Sakan Tradelinks</h1>}
+      </button>
       <nav className="flex-grow">
         <ul>
           {menuItems.map((item) => (
             <li key={item.name} className={`mb-2 rounded-lg ${activePage === item.name ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}>
-              <button onClick={() => setActivePage(item.name)} className="flex items-center p-3 w-full text-left">
-                <Icon name={item.icon} className="w-5 h-5 mr-3" />
-                <span className="font-medium">{item.name}</span>
+              <button 
+                onClick={() => setActivePage(item.name)} 
+                className={`flex items-center p-3 w-full text-left ${!isSidebarOpen && 'justify-center'}`}
+                title={item.name}
+              >
+                <Icon name={item.icon} className={`w-5 h-5 flex-shrink-0 ${isSidebarOpen && 'mr-3'}`} />
+                {isSidebarOpen && <span className="font-medium">{item.name}</span>}
               </button>
             </li>
           ))}
@@ -73,7 +79,7 @@ const Sidebar = ({ activePage, setActivePage }) => {
 };
 
 // --- Dashboard Page Components ---
-const DashboardPage = () => {
+const DashboardPage = ({ setActivePage }) => {
     const getDate = (days) => {
         const date = new Date();
         date.setDate(date.getDate() + days);
@@ -95,8 +101,11 @@ const DashboardPage = () => {
         </header>
     );
 
-    const StatCard = ({ title, value, icon, iconBgColor }) => (
-        <div className="bg-white p-6 rounded-lg shadow-sm flex justify-between items-center">
+    const StatCard = ({ title, value, icon, iconBgColor, targetPage }) => (
+        <button 
+            onClick={() => setActivePage(targetPage)}
+            className="bg-white p-6 rounded-lg shadow-sm flex justify-between items-center w-full text-left transition duration-300 hover:shadow-lg hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        >
             <div>
                 <p className="text-gray-500">{title}</p>
                 <p className="text-3xl font-bold text-gray-800">{value}</p>
@@ -104,7 +113,7 @@ const DashboardPage = () => {
             <div className={`p-3 rounded-lg ${iconBgColor}`}>
                 <Icon name={icon} className="w-6 h-6 text-white" />
             </div>
-        </div>
+        </button>
     );
 
     const OverdueFollowUpsCard = () => {
@@ -179,9 +188,9 @@ const DashboardPage = () => {
         <>
             <Header />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                <StatCard title="Total Clients" value="6" icon="statClients" iconBgColor="bg-blue-500" />
-                <StatCard title="Active Machines" value="4" icon="statMachines" iconBgColor="bg-green-500" />
-                <StatCard title="Overdue Follow-ups" value="3" icon="statOverdue" iconBgColor="bg-red-500" />
+                <StatCard title="Total Clients" value="6" icon="statClients" iconBgColor="bg-blue-500" targetPage="Clients" />
+                <StatCard title="Active Machines" value="4" icon="statMachines" iconBgColor="bg-green-500" targetPage="Machines" />
+                <StatCard title="Overdue Follow-ups" value="3" icon="statOverdue" iconBgColor="bg-red-500" targetPage="Reminders" />
             </div>
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 <OverdueFollowUpsCard />
@@ -259,35 +268,44 @@ const RemindersPage = () => {
     );
 };
 
-// --- Clients Page Component ---
+// --- (MODIFIED) Clients Page Component ---
 const ClientsPage = () => {
-    const allClients = [
-        { id: 1, name: 'TechCorp Solutions', machines: [{}, {}, {}] },
-        { id: 2, name: 'Global Manufacturing', machines: [{}, {}] },
-        { id: 3, name: 'Precision Industries', machines: [{}] },
-        { id: 4, name: 'InnoTech Labs', machines: [{}, {}, {}, {}] },
-        { id: 5, name: 'Apex Engineering', machines: [{}, {}] },
-        { id: 6, name: 'Dynamic Systems', machines: [{}, {}, {}, {}, {}] },
-        { id: 7, name: 'Quantum Innovations', machines: [{}] },
-        { id: 8, name: 'Stellar Solutions', machines: [{}, {}] },
-    ];
+    // We remove the hardcoded `allClients` array.
+    
+    // Set up a state variable to store the clients we fetch from the database.
+    const [clients, setClients] = useState([]);
 
-    const [searchTerm, setSearchTerm] = useState('');
-    const [filteredClients, setFilteredClients] = useState(allClients);
-
+    // This useEffect hook will run once when the component loads.
     useEffect(() => {
-        const results = allClients.filter(client =>
-            client.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-        setFilteredClients(results);
-    }, [searchTerm]);
+        // We define an async function to fetch the data.
+        const fetchClients = async () => {
+            try {
+                // Fetch data from your running backend server.
+                const response = await fetch('http://localhost:3001/api/clients');
+                
+                if (!response.ok) {
+                    // If the response is not successful, throw an error.
+                    throw new Error('Network response was not ok');
+                }
+
+                const data = await response.json();
+                setClients(data); // Update our state with the data from the API.
+            } catch (error) {
+                // Log any errors to the console.
+                console.error('There was a problem fetching the clients:', error);
+            }
+        };
+
+        fetchClients(); // Call the function to execute the fetch.
+    }, []); // The empty dependency array [] ensures this effect runs only once.
 
     return (
         <div className="w-full">
             <header className="flex justify-between items-center w-full mb-8">
                 <div>
                     <h2 className="text-3xl font-bold text-gray-800">Clients</h2>
-                    <p className="text-gray-500">Search and manage your clients.</p>
+                    {/* The description is updated to reflect the data source. */}
+                    <p className="text-gray-500">Displaying clients from the database.</p>
                 </div>
                  <button className="bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center font-semibold hover:bg-blue-800 transition">
                     <Icon name="plus" className="w-5 h-5 mr-2" />
@@ -295,30 +313,17 @@ const ClientsPage = () => {
                 </button>
             </header>
 
-            {/* Search Bar */}
-            <div className="mb-8">
-                <div className="relative">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                        <Icon name="search" className="w-5 h-5 text-gray-400" />
-                    </span>
-                    <input
-                        type="text"
-                        placeholder="Search for a client..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                </div>
-            </div>
+            {/* The search bar has been temporarily removed to simplify this step. */}
 
-            {/* Client List */}
             <div className="bg-white rounded-lg shadow-sm">
                 <ul className="divide-y divide-gray-200">
-                    {filteredClients.length > 0 ? (
-                        filteredClients.map(client => (
-                            <li key={client.id} className="p-4 flex justify-between items-center hover:bg-gray-50 transition">
+                    {clients.length > 0 ? (
+                        // We now map over the 'clients' state variable.
+                        clients.map(client => (
+                            // MongoDB uses '_id' as the unique key.
+                            <li key={client._id} className="p-4 flex justify-between items-center hover:bg-gray-50 transition">
                                 <span className="font-semibold text-gray-800">{client.name}</span>
-                                <span className="text-gray-500">{client.machines.length} Machine{client.machines.length !== 1 ? 's' : ''}</span>
+                                {/* We can add machine count back in a later step. */}
                             </li>
                         ))
                     ) : (
@@ -331,19 +336,133 @@ const ClientsPage = () => {
 };
 
 
-// --- Main App Component ---
+// --- Machines Page Component ---
+const MachinesPage = () => {
+    const allMachines = [
+        { id: 1, name: 'CNC Lathe TX-500', client: 'TechCorp Solutions', dueDate: '2025-08-15', status: 'Active' },
+        { id: 2, name: 'Milling Machine V2', client: 'Global Manufacturing', dueDate: '2025-09-01', status: 'Active' },
+        { id: 3, name: 'Industrial Grinder G-8', client: 'Precision Industries', dueDate: '2025-07-20', status: 'AMC Due' },
+        { id: 4, name: '3D Printer ProJet 7000', client: 'InnoTech Labs', dueDate: '2024-12-05', status: 'Warranty Expired' },
+        { id: 5, name: 'Sheet Metal Press MP-3', client: 'Apex Engineering', dueDate: '2025-10-30', status: 'Active' },
+        { id: 6, name: 'Automated Welding Robot', client: 'Dynamic Systems', dueDate: '2025-07-25', status: 'AMC Due' },
+        { id: 7, name: 'Laser Cutter LC-400', client: 'Stellar Solutions', dueDate: '2025-11-22', status: 'Active' },
+        { id: 8, name: 'Packaging Machine PM-XL', client: 'Quantum Innovations', dueDate: '2025-06-10', status: 'Warranty Expired' },
+    ];
+
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filteredMachines, setFilteredMachines] = useState(allMachines);
+
+    useEffect(() => {
+        const results = allMachines.filter(machine =>
+            machine.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            machine.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            machine.status.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        setFilteredMachines(results);
+    }, [searchTerm, allMachines]);
+
+    const formatDate = (dateString) => {
+        return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(dateString));
+    };
+
+    const getStatusClass = (status) => {
+        switch (status) {
+            case 'Active': return 'bg-green-100 text-green-800';
+            case 'AMC Due': return 'bg-yellow-100 text-yellow-800';
+            case 'Warranty Expired': return 'bg-red-100 text-red-800';
+            default: return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    return (
+        <div className="w-full">
+            <header className="flex justify-between items-center w-full mb-8">
+                <div>
+                    <h2 className="text-3xl font-bold text-gray-800">Machines</h2>
+                    <p className="text-gray-500">Track and manage all client machines.</p>
+                </div>
+                 <button className="bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center font-semibold hover:bg-blue-800 transition">
+                    <Icon name="plus" className="w-5 h-5 mr-2" />
+                    Add Machine
+                </button>
+            </header>
+
+            <div className="mb-8">
+                <div className="relative">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                        <Icon name="search" className="w-5 h-5 text-gray-400" />
+                    </span>
+                    <input
+                        type="text"
+                        placeholder="Search by machine, client, or status..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Machine Name</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AMC/Warranty Due Date</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredMachines.length > 0 ? (
+                            filteredMachines.map(machine => (
+                                <tr key={machine.id} className="hover:bg-gray-50 transition">
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className="font-medium text-gray-900">{machine.name}</span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className="text-gray-600">{machine.client}</span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className="text-gray-600">{formatDate(machine.dueDate)}</span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(machine.status)}`}>
+                                            {machine.status}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr>
+                                <td colSpan="4" className="px-6 py-12 text-center text-gray-500">No machines found.</td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+
+// --- (MODIFIED) Main App Component ---
 export default function App() {
   const [activePage, setActivePage] = useState('Dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   return (
-    <div className="h-screen flex bg-gray-100 font-sans overflow-hidden">
-      <Sidebar activePage={activePage} setActivePage={setActivePage} />
+    <div className="h-screen flex bg-blue-50 font-sans overflow-hidden">
+      <Sidebar 
+        activePage={activePage} 
+        setActivePage={setActivePage} 
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+      />
       <main className="flex-1 p-8 overflow-y-auto">
-        {activePage === 'Dashboard' && <DashboardPage />}
+        {activePage === 'Dashboard' && <DashboardPage setActivePage={setActivePage} />}
         {activePage === 'Reminders' && <RemindersPage />}
         {activePage === 'Clients' && <ClientsPage />}
-        {/* Add other pages here with similar conditional rendering */}
-        {/* {activePage === 'Machines' && <MachinesPage />} */}
+        {activePage === 'Machines' && <MachinesPage />}
       </main>
     </div>
   );
