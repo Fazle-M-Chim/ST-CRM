@@ -268,66 +268,162 @@ const RemindersPage = () => {
     );
 };
 
+
+// --- NEW: Add Client Modal Component ---
+const AddClientModal = ({ isOpen, onClose, onClientAdded }) => {
+    const initialState = {
+        companyName: '',
+        companyEmail: '',
+        physicalAddress: '',
+        lastContactedDate: '',
+        contacts: [{ name: '', title: '', phone: '', email: '' }]
+    };
+
+    const [formData, setFormData] = useState(initialState);
+
+    const handleMainChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleContactChange = (index, e) => {
+        const { name, value } = e.target;
+        const updatedContacts = [...formData.contacts];
+        updatedContacts[index][name] = value;
+        setFormData(prev => ({ ...prev, contacts: updatedContacts }));
+    };
+
+    const addContact = () => {
+        setFormData(prev => ({
+            ...prev,
+            contacts: [...prev.contacts, { name: '', title: '', phone: '', email: '' }]
+        }));
+    };
+
+    const removeContact = (index) => {
+        const updatedContacts = formData.contacts.filter((_, i) => i !== index);
+        setFormData(prev => ({ ...prev, contacts: updatedContacts }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const response = await fetch('http://localhost:3001/api/clients', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to create client');
+            }
+            
+            setFormData(initialState); // Reset form
+            onClientAdded(); // Refresh the client list
+            onClose(); // Close the modal
+        } catch (error) {
+            console.error('Error submitting form:', error);
+        }
+    };
+    
+    // Don't render anything if the modal isn't open
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
+            <div className="bg-white p-8 rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <h2 className="text-2xl font-bold mb-6">Add New Client</h2>
+                
+                <form onSubmit={handleSubmit}>
+                    {/* Company Details */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <input type="text" name="companyName" value={formData.companyName} onChange={handleMainChange} placeholder="Company Name" className="p-2 border rounded" required />
+                        <input type="email" name="companyEmail" value={formData.companyEmail} onChange={handleMainChange} placeholder="Company Email" className="p-2 border rounded" />
+                        <input type="text" name="physicalAddress" value={formData.physicalAddress} onChange={handleMainChange} placeholder="Physical Address" className="p-2 border rounded" />
+                        <input type="date" name="lastContactedDate" value={formData.lastContactedDate} onChange={handleMainChange} className="p-2 border rounded" required />
+                    </div>
+
+                    {/* Contact Persons */}
+                    <h3 className="text-xl font-semibold mb-4 border-t pt-4">Contact Persons</h3>
+                    {formData.contacts.map((contact, index) => (
+                        <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4 p-3 border rounded-md relative">
+                            <input type="text" name="name" value={contact.name} onChange={(e) => handleContactChange(index, e)} placeholder="Full Name" className="p-2 border rounded col-span-2" required />
+                            <input type="text" name="title" value={contact.title} onChange={(e) => handleContactChange(index, e)} placeholder="Title" className="p-2 border rounded col-span-1" />
+                            <input type="tel" name="phone" value={contact.phone} onChange={(e) => handleContactChange(index, e)} placeholder="Phone" className="p-2 border rounded col-span-1" />
+                            <input type="email" name="email" value={contact.email} onChange={(e) => handleContactChange(index, e)} placeholder="Email" className="p-2 border rounded col-span-1" />
+                            {formData.contacts.length > 1 && (
+                                <button type="button" onClick={() => removeContact(index)} className="absolute top-1 right-1 text-red-500 hover:text-red-700">&times;</button>
+                            )}
+                        </div>
+                    ))}
+                    <button type="button" onClick={addContact} className="mb-6 text-sm text-blue-600 hover:underline">+ Add another contact</button>
+
+                    {/* Actions */}
+                    <div className="flex justify-end gap-4 border-t pt-6">
+                        <button type="button" onClick={onClose} className="px-6 py-2 bg-gray-200 rounded-md font-semibold">Cancel</button>
+                        <button type="submit" className="px-6 py-2 bg-blue-700 text-white rounded-md font-semibold hover:bg-blue-800">Save Client</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 // --- (MODIFIED) Clients Page Component ---
 const ClientsPage = () => {
-    // We remove the hardcoded `allClients` array.
-    
-    // Set up a state variable to store the clients we fetch from the database.
     const [clients, setClients] = useState([]);
+    // NEW: State to control the modal's visibility
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // This useEffect hook will run once when the component loads.
-    useEffect(() => {
-        // We define an async function to fetch the data.
-        const fetchClients = async () => {
-            try {
-                // Fetch data from your running backend server.
-                const response = await fetch('http://localhost:3001/api/clients');
-                
-                if (!response.ok) {
-                    // If the response is not successful, throw an error.
-                    throw new Error('Network response was not ok');
-                }
-
-                const data = await response.json();
-                setClients(data); // Update our state with the data from the API.
-            } catch (error) {
-                // Log any errors to the console.
-                console.error('There was a problem fetching the clients:', error);
+    const fetchClients = async () => {
+        try {
+            const response = await fetch('http://localhost:3001/api/clients');
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
             }
-        };
-
-        fetchClients(); // Call the function to execute the fetch.
-    }, []); // The empty dependency array [] ensures this effect runs only once.
+            const data = await response.json();
+            setClients(data);
+        } catch (error) {
+            console.error('There was a problem fetching the clients:', error);
+        }
+    };
+    
+    useEffect(() => {
+        fetchClients(); // Fetch clients when the component loads
+    }, []);
 
     return (
         <div className="w-full">
+            {/* The modal component is now here */}
+            <AddClientModal 
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onClientAdded={fetchClients} // Pass fetchClients to refresh the list
+            />
+            
             <header className="flex justify-between items-center w-full mb-8">
                 <div>
                     <h2 className="text-3xl font-bold text-gray-800">Clients</h2>
-                    {/* The description is updated to reflect the data source. */}
                     <p className="text-gray-500">Displaying clients from the database.</p>
                 </div>
-                 <button className="bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center font-semibold hover:bg-blue-800 transition">
+                 {/* This button now opens the modal */}
+                 <button onClick={() => setIsModalOpen(true)} className="bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center font-semibold hover:bg-blue-800 transition">
                     <Icon name="plus" className="w-5 h-5 mr-2" />
                     Add Client
                 </button>
             </header>
 
-            {/* The search bar has been temporarily removed to simplify this step. */}
-
             <div className="bg-white rounded-lg shadow-sm">
                 <ul className="divide-y divide-gray-200">
                     {clients.length > 0 ? (
-                        // We now map over the 'clients' state variable.
                         clients.map(client => (
-                            // MongoDB uses '_id' as the unique key.
                             <li key={client._id} className="p-4 flex justify-between items-center hover:bg-gray-50 transition">
                                 <span className="font-semibold text-gray-800">{client.name}</span>
-                                {/* We can add machine count back in a later step. */}
+                                <span className="text-gray-500">{new Date(client.lastContactedDate).toLocaleDateString()}</span>
                             </li>
                         ))
                     ) : (
-                        <li className="p-6 text-center text-gray-500">No clients found.</li>
+                        <li className="p-6 text-center text-gray-500">No clients found. Click "Add Client" to begin.</li>
                     )}
                 </ul>
             </div>
