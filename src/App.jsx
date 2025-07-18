@@ -407,7 +407,7 @@ const AddClientModal = ({ isOpen, onClose, onClientAdded, clientToEdit }) => {
     );
 };
 
-// --- (UPGRADED) Client Detail View Component ---
+// --- (FIXED) Client Detail View Component ---
 const ClientDetailView = ({ client, onEdit, onBack, onDelete }) => {
     return (
         <div className="bg-white p-8 rounded-lg shadow-sm">
@@ -419,27 +419,38 @@ const ClientDetailView = ({ client, onEdit, onBack, onDelete }) => {
                 </div>
                 <div className="text-right">
                     <button onClick={onBack} className="text-sm text-blue-600 hover:underline mb-2">← Back to Client List</button>
-                    <p className="text-sm text-gray-600">
-                        <strong>Last Contacted:</strong> {new Date(client.lastContactedDate).toLocaleDateString()}
-                    </p>
+                    {/* Only show the date if it exists */}
+                    {client.lastContactedDate && (
+                        <p className="text-sm text-gray-600">
+                            <strong>Last Contacted:</strong> {new Date(client.lastContactedDate).toLocaleDateString()}
+                        </p>
+                    )}
                 </div>
             </div>
 
             <div className="border-t pt-6">
                 <h3 className="text-xl font-semibold mb-4 text-gray-700">Contacts</h3>
                 <div className="space-y-4">
-                    {client.contacts.map((contact, index) => (
+                    {/* FIX: We now check if client.contacts exists and is an array before mapping.
+                      This is called "optional chaining" and "short-circuiting".
+                      If client.contacts is undefined, the code after && will not run, preventing the crash.
+                    */}
+                    {client.contacts && client.contacts.map((contact, index) => (
                         <div key={index} className="p-4 border rounded-md bg-gray-50">
-                            <p className="font-bold">{contact.name} <span className="font-normal text-gray-600">- {contact.title}</span></p>
-                            <p className="text-sm text-gray-600">Email: {contact.email}</p>
-                            <p className="text-sm text-gray-600">Phone: {contact.phone}</p>
+                            <p className="font-bold">{contact.name || 'N/A'} <span className="font-normal text-gray-600">- {contact.title || 'N/A'}</span></p>
+                            <p className="text-sm text-gray-600">Email: {contact.email || 'N/A'}</p>
+                            <p className="text-sm text-gray-600">Phone: {contact.phone || 'N/A'}</p>
                         </div>
                     ))}
+                    
+                    {/* Show a message if there are no contacts */}
+                    {(!client.contacts || client.contacts.length === 0) && (
+                         <p className="text-sm text-gray-500">No contact persons have been added for this client.</p>
+                    )}
                 </div>
             </div>
 
             <div className="flex justify-end items-center mt-8 border-t pt-6 gap-4">
-                {/* NEW: Delete button */}
                 <button onClick={() => onDelete(client._id)} className="bg-red-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-red-700 transition">
                     Delete Client
                 </button>
@@ -450,7 +461,6 @@ const ClientDetailView = ({ client, onEdit, onBack, onDelete }) => {
         </div>
     );
 };
-
 
 // --- (UPGRADED) Clients Page Component ---
 const ClientsPage = () => {
@@ -466,9 +476,11 @@ const ClientsPage = () => {
             const data = await response.json();
             setClients(data);
 
-            if(selectedClient){
+            // This ensures that if you are viewing/editing a client,
+            // the data for that client is refreshed after an update.
+            if (selectedClient) {
                 const updatedSelectedClient = data.find(c => c._id === selectedClient._id);
-                setSelectedClient(updatedSelectedClient || null); // If client was deleted, go back to list
+                setSelectedClient(updatedSelectedClient || null);
             }
         } catch (error) {
             console.error('There was a problem fetching the clients:', error);
@@ -479,25 +491,17 @@ const ClientsPage = () => {
         fetchClients();
     }, []);
     
-    // NEW: Function to handle deleting a client
     const handleDeleteClient = async (clientId) => {
-        if (window.confirm('Are you sure you want to permanently delete this client?')) {
+        if (window.confirm('Are you sure you want to permanently delete this client? This action cannot be undone.')) {
             try {
                 const response = await fetch(`http://localhost:3001/api/clients/${clientId}`, {
                     method: 'DELETE'
                 });
-
-                if (!response.ok) {
-                    throw new Error('Failed to delete client');
-                }
-                
-                // Return to the list view after deleting
+                if (!response.ok) throw new Error('Failed to delete client');
                 setSelectedClient(null); 
-                // Refresh the client list to remove the deleted client
                 fetchClients();
             } catch (error) {
                 console.error('Error deleting client:', error);
-                alert(`Error: ${error.message}`);
             }
         }
     };
@@ -507,8 +511,11 @@ const ClientsPage = () => {
         setIsModalOpen(true);
     };
 
+    // FIXED: This function now correctly handles opening the modal from any view.
     const handleEditClient = (client) => {
+        // We set the client to be edited.
         setClientToEdit(client);
+        // We ensure the modal is opened.
         setIsModalOpen(true);
     };
 
@@ -517,17 +524,9 @@ const ClientsPage = () => {
         setClientToEdit(null);
     }
     
-    if (selectedClient) {
-        return <ClientDetailView 
-                    client={selectedClient} 
-                    onEdit={handleEditClient}
-                    onBack={() => setSelectedClient(null)} 
-                    onDelete={handleDeleteClient}
-                />;
-    }
-
     return (
         <div className="w-full">
+            {/* The modal is always available in the component's structure. Its visibility is controlled by 'isOpen'. */}
             <AddClientModal 
                 isOpen={isModalOpen}
                 onClose={handleCloseModal}
@@ -535,37 +534,49 @@ const ClientsPage = () => {
                 clientToEdit={clientToEdit}
             />
             
-            <header className="flex justify-between items-center w-full mb-8">
-                <div>
-                    <h2 className="text-3xl font-bold text-gray-800">Clients</h2>
-                    <p className="text-gray-500">Displaying clients from the database.</p>
-                </div>
-                 <button onClick={handleAddClient} className="bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center font-semibold hover:bg-blue-800 transition">
-                    <Icon name="plus" className="w-5 h-5 mr-2" />
-                    Add Client
-                </button>
-            </header>
+            {/* Conditional Rendering: Show Detail View or List View */}
+            {selectedClient ? (
+                <ClientDetailView 
+                    client={selectedClient} 
+                    onEdit={handleEditClient}
+                    onBack={() => setSelectedClient(null)} 
+                    onDelete={handleDeleteClient}
+                />
+            ) : (
+                <>
+                    <header className="flex justify-between items-center w-full mb-8">
+                        <div>
+                            <h2 className="text-3xl font-bold text-gray-800">Clients</h2>
+                            <p className="text-gray-500">Displaying clients from the database.</p>
+                        </div>
+                        <button onClick={handleAddClient} className="bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center font-semibold hover:bg-blue-800 transition">
+                            <Icon name="plus" className="w-5 h-5 mr-2" />
+                            Add Client
+                        </button>
+                    </header>
 
-            <div className="bg-white rounded-lg shadow-sm">
-                <ul className="divide-y divide-gray-200">
-                    {clients.length > 0 ? (
-                        clients.map(client => (
-                            <li 
-                                key={client._id} 
-                                className="p-4 flex justify-between items-center hover:bg-gray-50 transition cursor-pointer"
-                                onClick={() => setSelectedClient(client)}
-                            >
-                                <span className="font-semibold text-gray-800">{client.name}</span>
-                                <span className="text-sm text-gray-500">
-                                    Last Contacted: {new Date(client.lastContactedDate).toLocaleDateString()}
-                                </span>
-                            </li>
-                        ))
-                    ) : (
-                        <li className="p-6 text-center text-gray-500">No clients found. Click "Add Client" to begin.</li>
-                    )}
-                </ul>
-            </div>
+                    <div className="bg-white rounded-lg shadow-sm">
+                        <ul className="divide-y divide-gray-200">
+                            {clients.length > 0 ? (
+                                clients.map(client => (
+                                    <li 
+                                        key={client._id} 
+                                        className="p-4 flex justify-between items-center hover:bg-gray-50 transition cursor-pointer"
+                                        onClick={() => setSelectedClient(client)}
+                                    >
+                                        <span className="font-semibold text-gray-800">{client.name}</span>
+                                        <span className="text-sm text-gray-500">
+                                            Last Contacted: {new Date(client.lastContactedDate).toLocaleDateString()}
+                                        </span>
+                                    </li>
+                                ))
+                            ) : (
+                                <li className="p-6 text-center text-gray-500">No clients found. Click "Add Client" to begin.</li>
+                            )}
+                        </ul>
+                    </div>
+                </>
+            )}
         </div>
     );
 };
