@@ -83,7 +83,7 @@ const DashboardPage = ({ setActivePage }) => {
     // --- State Management ---
     // The client count is now dynamic. The others are ready to be made dynamic.
     const [clientCount, setClientCount] = useState(0);
-    const [activeMachineCount, setActiveMachineCount] = useState(4); // Placeholder
+    const [machineCount, setMachineCount] = useState(0);
     const [overdueFollowUpsCount, setOverdueFollowUpsCount] = useState(3); // Placeholder
 
     // State for the lists, initialized with sample data
@@ -97,27 +97,22 @@ const DashboardPage = ({ setActivePage }) => {
         { client: 'Apex Engineering', task: 'Insurance Renewal', dueDate: new Date('2025-09-20') },
     ]);
 
-    // --- Data Fetching ---
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
                 // Fetch clients to get the total count
                 const clientsResponse = await fetch('http://localhost:3001/api/clients');
-                if (!clientsResponse.ok) throw new Error('Failed to fetch clients');
-                const clients = await clientsResponse.json();
-                setClientCount(clients.length);
+                if (clientsResponse.ok) {
+                    const clients = await clientsResponse.json();
+                    setClientCount(clients.length);
+                }
 
-                // TODO: Fetch machine data when the API is ready
-                // const machineResponse = await fetch('http://localhost:3001/api/machines');
-                // const machines = await machineResponse.json();
-                // setActiveMachineCount(machines.filter(m => m.status === 'Active').length);
-
-                // TODO: Fetch reminders data when the API is ready
-                // const remindersResponse = await fetch('http://localhost:3001/api/reminders');
-                // const reminders = await remindersResponse.json();
-                // setOverdueFollowUpsCount(reminders.filter(r => new Date(r.dueDate) < new Date()).length);
-                // setOverdueItems(reminders.filter(r => new Date(r.dueDate) < new Date()));
-                // setUpcomingReminders(reminders.filter(r => new Date(r.dueDate) > new Date()));
+                // NEW: Fetch machines to get the total count
+                const machinesResponse = await fetch('http://localhost:3001/api/machines');
+                if (machinesResponse.ok) {
+                    const machines = await machinesResponse.json();
+                    setMachineCount(machines.length);
+                }
 
             } catch (error) {
                 console.error("Failed to fetch dashboard data:", error);
@@ -213,7 +208,7 @@ const DashboardPage = ({ setActivePage }) => {
             <Header />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 <StatCard title="Total Clients" value={clientCount} icon="statClients" iconBgColor="bg-blue-500" targetPage="Clients" />
-                <StatCard title="Active Machines" value={activeMachineCount} icon="statMachines" iconBgColor="bg-green-500" targetPage="Machines" />
+                <StatCard title="Total Machines" value={machineCount} icon="statMachines" iconBgColor="bg-green-500" targetPage="Machines" />
                 <StatCard title="Overdue Follow-ups" value={overdueFollowUpsCount} icon="statOverdue" iconBgColor="bg-red-500" targetPage="Reminders" />
             </div>
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
@@ -402,7 +397,7 @@ const AddClientModal = ({ isOpen, onClose, onClientAdded, clientToEdit }) => {
     );
 };
 
-// --- (SIMPLIFIED) Client Detail View Component ---
+// --- Client Detail View Component ---
 const ClientDetailView = ({ client, onEdit, onBack, onDelete }) => {
     const [machines, setMachines] = useState([]);
 
@@ -424,16 +419,38 @@ const ClientDetailView = ({ client, onEdit, onBack, onDelete }) => {
 
     return (
         <div className="bg-white p-8 rounded-lg shadow-sm">
-            {/* Client details section */}
+            {/* Client Details Header */}
             <div className="flex justify-between items-start mb-6">
                 <div>
                     <h2 className="text-3xl font-bold text-gray-800">{client.name}</h2>
                     <p className="text-gray-500">{client.physicalAddress}</p>
+                    <p className="text-gray-500">{client.companyEmail}</p>
                 </div>
-                <button onClick={onBack} className="text-sm text-blue-600 hover:underline">← Back to Client List</button>
+                <div className="text-right">
+                    <button onClick={onBack} className="text-sm text-blue-600 hover:underline mb-2">← Back to Client List</button>
+                    {client.lastContactedDate && (
+                        <p className="text-sm text-gray-600">
+                            <strong>Last Contacted:</strong> {new Date(client.lastContactedDate).toLocaleDateString()}
+                        </p>
+                    )}
+                </div>
             </div>
 
-            {/* Machines Section - This no longer has an "Add Machine" button */}
+            {/* Contacts Section */}
+            <div className="border-t pt-6">
+                <h3 className="text-xl font-semibold mb-4 text-gray-700">Contacts</h3>
+                <div className="space-y-4">
+                    {client.contacts && client.contacts.length > 0 ? client.contacts.map((contact, index) => (
+                        <div key={index} className="p-4 border rounded-md bg-gray-50">
+                            <p className="font-bold">{contact.name || 'N/A'} <span className="font-normal text-gray-600">- {contact.title || 'N/A'}</span></p>
+                            <p className="text-sm text-gray-600">Email: {contact.email || 'N/A'}</p>
+                            <p className="text-sm text-gray-600">Phone: {contact.phone || 'N/A'}</p>
+                        </div>
+                    )) : <p className="text-sm text-gray-500">No contact persons have been added for this client.</p>}
+                </div>
+            </div>
+
+            {/* Machines Section */}
             <div className="border-t pt-6 mt-6">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-semibold text-gray-700">Machines ({machines.length})</h3>
@@ -452,7 +469,7 @@ const ClientDetailView = ({ client, onEdit, onBack, onDelete }) => {
                 </div>
             </div>
 
-            {/* Contacts and action buttons sections */}
+            {/* Action Buttons */}
             <div className="flex justify-end items-center mt-8 border-t pt-6 gap-4">
                <button onClick={() => onDelete(client._id)} className="bg-red-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-red-700 transition">Delete Client</button>
                <button onClick={() => onEdit(client)} className="bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-800 transition">Edit Client Details</button>
@@ -706,12 +723,11 @@ const AddMachineModal = ({ isOpen, onClose, onMachineAdded, clients }) => {
     );
 };
 
-// --- (UPGRADED) Main Machines Page Component ---
+// --- Main Machines Page Component ---
 const MachinesPage = () => {
     const [machines, setMachines] = useState([]);
     const [clients, setClients] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    // NEW: Loading state to prevent opening modal before clients are loaded
     const [isLoading, setIsLoading] = useState(true);
 
     const fetchData = async () => {
@@ -761,7 +777,6 @@ const MachinesPage = () => {
                     <h2 className="text-3xl font-bold text-gray-800">All Machines</h2>
                     <p className="text-gray-500">A complete inventory of all machines across clients.</p>
                 </div>
-                {/* FIXED: Button is disabled while data is loading */}
                 <button 
                     onClick={() => setIsModalOpen(true)} 
                     className="bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center font-semibold hover:bg-blue-800 transition disabled:bg-gray-400"
@@ -779,8 +794,8 @@ const MachinesPage = () => {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model Name</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial Number</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                            {/* NEW: Status column */}
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Support Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Contacted</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -795,11 +810,12 @@ const MachinesPage = () => {
                                             {machine.status}
                                         </span>
                                     </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">{new Date(machine.lastContactedDate).toLocaleDateString()}</td>
                                 </tr>
                             ))
                         ) : (
-                            <tr>
-                                <td colSpan="4" className="text-center py-10 text-gray-500">
+                             <tr>
+                                <td colSpan="5" className="text-center py-10 text-gray-500">
                                     {isLoading ? 'Loading machines...' : 'No machines found.'}
                                 </td>
                             </tr>
@@ -810,7 +826,6 @@ const MachinesPage = () => {
         </div>
     );
 };
-
 
 // --- (MODIFIED) Main App Component ---
 export default function App() {
